@@ -1,0 +1,2226 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>StudyVault</title>
+    <!-- โหลด Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- โหลด Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- โหลดฟอนต์ Prompt และ Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.22s ease-out forwards; }
+
+        @media screen and (max-width: 768px) {
+            input, select, textarea { font-size: 16px !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col selection:bg-indigo-100 selection:text-indigo-700 pb-24 sm:pb-8">
+
+    <!-- แถบนำทางด้านบน (Header) -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-0 sm:h-16 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-4">
+            <!-- แถวที่ 1 บนมือถือ (ซ้าย: โลโก้ + ชื่อ + สถานะ | ขวา: ปุ่มจัดการ) -->
+            <div class="flex items-center justify-between gap-2 w-full sm:w-auto min-w-0">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div onclick="selectSubject('ALL')" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-200 cursor-pointer shrink-0">
+                        <i data-lucide="layers" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-1.5 sm:gap-2">
+                            <h1 onclick="selectSubject('ALL')" class="text-base sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 leading-tight cursor-pointer whitespace-nowrap shrink-0">
+                                StudyVault
+                            </h1>
+                            <!-- ปุ่มสถานะซิงก์ -->
+                            <button onclick="openSyncModal()" id="sync-status-pill" class="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1 hover:bg-amber-100 transition whitespace-nowrap shrink-0">
+                                <span id="sync-status-dot" class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-500 shrink-0"></span>
+                                <span id="sync-status-text">กำลังเชื่อมต่อ...</span>
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-500 hidden sm:block truncate">คลังเลกเชอร์ รูปภาพ และระบบจดการบ้าน ซิงก์อัตโนมัติคอม-มือถือ</p>
+                    </div>
+                </div>
+
+                <!-- กลุ่มปุ่มไอคอนบนมือถือ (แสดงเฉพาะจอเล็ก < sm) -->
+                <div class="flex sm:hidden items-center gap-1.5 shrink-0">
+                    <button onclick="openSyncModal()" aria-label="ซิงก์คอม-มือถือ" class="w-9 h-9 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex items-center justify-center transition" title="เชื่อมต่อซิงก์คอม-มือถือ">
+                        <i data-lucide="cloud" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="openBackupModal()" aria-label="สำรองข้อมูล" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition" title="สำรองข้อมูล / นำเข้าไฟล์">
+                        <i data-lucide="database" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="openManageSubjectsModal()" aria-label="จัดการรายวิชา" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition" title="จัดการ / ลบรายวิชา">
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4 text-indigo-600"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- แถวที่ 2 บนมือถือ (ปุ่มหลักเต็มความกว้าง) และแถวเดียวด้านขวาบนจอคอม (sm:) -->
+            <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <!-- ปุ่มตั้งค่าซิงก์คอม-มือถือ (จอ sm ขึ้นไป) -->
+                <button onclick="openSyncModal()" class="hidden sm:flex p-2.5 sm:px-3 sm:py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs sm:text-sm font-semibold transition items-center gap-1.5" title="เชื่อมต่อซิงก์คอม-มือถือ">
+                    <i data-lucide="cloud" class="w-4 h-4"></i>
+                    <span class="hidden md:inline">ซิงก์คอม-มือถือ</span>
+                </button>
+
+                <!-- ปุ่มสำรองข้อมูล (จอ sm ขึ้นไป) -->
+                <button onclick="openBackupModal()" class="hidden sm:flex p-2.5 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs sm:text-sm font-medium transition items-center gap-1.5" title="สำรองข้อมูล / นำเข้าไฟล์">
+                    <i data-lucide="database" class="w-4 h-4 text-slate-500"></i>
+                    <span class="hidden lg:inline">สำรองไฟล์</span>
+                </button>
+
+                <!-- ปุ่มจัดการรายวิชา (จอ sm ขึ้นไป) -->
+                <button onclick="openManageSubjectsModal()" class="hidden sm:flex p-2.5 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs sm:text-sm font-medium transition items-center gap-1.5" title="จัดการ / ลบรายวิชา">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4 text-indigo-600"></i>
+                    <span>จัดการวิชา</span>
+                </button>
+
+                <!-- ปุ่มเพิ่มข้อมูล / การบ้าน (เต็มความกว้างบนมือถือ, พอดีข้อความบนจอคอม) -->
+                <button onclick="openAddItemModal('NOTE')" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-sm shadow-indigo-200 transition flex items-center justify-center gap-1.5">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>เพิ่มโน้ต / การบ้าน</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- พื้นที่เนื้อหาหลัก -->
+    <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 flex flex-col lg:flex-row gap-6">
+        
+        <!-- แถบด้านข้าง: รายชื่อวิชา (Sidebar) -->
+        <aside class="w-full lg:w-72 shrink-0 flex flex-col gap-4">
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <i data-lucide="book-open" class="w-3.5 h-3.5 text-indigo-600"></i> รายวิชาของฉัน
+                    </h2>
+                    <div class="flex items-center gap-1">
+                        <button onclick="openManageSubjectsModal()" class="text-xs text-slate-500 hover:text-indigo-600 font-medium px-2 py-1 rounded-lg hover:bg-indigo-50 transition flex items-center gap-1" title="แก้ไขหรือลบรายวิชา">
+                            <i data-lucide="sliders-horizontal" class="w-3 h-3"></i> แก้ไข/ลบ
+                        </button>
+                        <button onclick="openAddSubjectModal()" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3 h-3"></i> สร้างวิชา
+                        </button>
+                    </div>
+                </div>
+
+                <!-- รายการวิชา -->
+                <div id="subject-list" class="flex lg:flex-col gap-2 overflow-x-auto no-scrollbar pb-1 lg:pb-0">
+                    <!-- รายการวิชาถูกสร้างด้วย JS -->
+                </div>
+            </div>
+
+            <!-- การ์ดแนะนำการซิงก์ระหว่างคอมและมือถือ -->
+            <div onclick="openSyncModal()" class="bg-gradient-to-br from-indigo-50 via-violet-50 to-purple-50 rounded-2xl border border-indigo-200/80 p-4 cursor-pointer hover:shadow-sm transition">
+                <div class="flex items-start gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                        <i data-lucide="smartphone" class="w-4 h-4"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="text-xs sm:text-sm font-bold text-indigo-950 flex items-center justify-between">
+                            <span>เชื่อมข้อมูลคอม & มือถือ</span>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-indigo-400"></i>
+                        </h3>
+                        <p class="text-[11px] text-indigo-900/75 mt-1 leading-relaxed">
+                            รหัสห้องซิงก์: <b id="sidebar-vault-code" class="font-mono bg-white px-1.5 py-0.5 rounded border border-indigo-200 text-indigo-700">...</b><br>
+                            แตะเพื่อคัดลอกลิงก์เปิดบนอีกเครื่องให้ข้อมูลตรงกันอัตโนมัติ
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- พื้นที่แสดงผลหลัก (Main Content) -->
+        <main class="flex-1 flex flex-col gap-5 min-w-0">
+            
+            <!-- แถบค้นหาและตัวกรอง -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-4 shadow-2xs flex flex-col gap-3">
+                <div class="flex flex-col sm:flex-row gap-2.5 items-center justify-between">
+                    <div class="relative w-full sm:flex-1">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="search-input" oninput="renderMainView()" placeholder="ค้นหาชื่อเรื่อง, การบ้าน, รายละเอียด หรือรหัสวิชา..." 
+                            class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
+                    </div>
+                    
+                    <!-- ปุ่มตัวกรองแบบรวดเร็ว -->
+                    <div class="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+                        <button onclick="setFilter('ALL')" data-filter="ALL" class="filter-pill px-3 py-1.5 rounded-xl text-xs font-semibold transition bg-indigo-600 text-white">
+                            ทั้งหมด
+                        </button>
+                        <button onclick="setFilter('HW_PENDING')" data-filter="HW_PENDING" class="filter-pill px-3 py-1.5 rounded-xl text-xs font-semibold transition bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1">
+                            <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-500"></i> การบ้านค้างส่ง
+                        </button>
+                        <button onclick="setFilter('HW_DONE')" data-filter="HW_DONE" class="filter-pill px-3 py-1.5 rounded-xl text-xs font-semibold transition bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-500"></i> ส่งแล้ว
+                        </button>
+                        <button onclick="setFilter('NOTE')" data-filter="NOTE" class="filter-pill px-3 py-1.5 rounded-xl text-xs font-semibold transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                            โน้ต/เลกเชอร์
+                        </button>
+                        <button onclick="setFilter('IMAGE')" data-filter="IMAGE" class="filter-pill px-3 py-1.5 rounded-xl text-xs font-semibold transition bg-slate-100 text-slate-600 hover:bg-slate-200">
+                            มีรูปภาพ
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ส่วนสรุปรายการหัวข้อที่บันทึกไว้ (Auto-Summary Box) -->
+            <section id="summary-section" class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-2xs animate-fade-in">
+                <!-- เนื้อหาส่วนสรุปอัปเดตอัตโนมัติ -->
+            </section>
+
+            <!-- รายการการ์ดข้อมูลและรูปภาพ (Items Feed) -->
+            <section>
+                <div class="flex items-center justify-between mb-3.5">
+                    <h3 id="items-section-title" class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="folder-open" class="w-4 h-4 text-indigo-600"></i>
+                        <span>รายการที่บันทึกไว้</span>
+                    </h3>
+                    <span id="items-count-badge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-200/80 text-slate-700">0 รายการ</span>
+                </div>
+
+                <div id="items-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- การ์ดรายการถูกสร้างที่นี่ -->
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ปุ่มลอยด้านล่างสำหรับมือถือ (Floating Action Button) -->
+    <div class="fixed bottom-5 right-5 sm:hidden z-30">
+        <button onclick="openAddItemModal('NOTE')" class="w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-300 flex items-center justify-center transition active:scale-95">
+            <i data-lucide="plus" class="w-6 h-6"></i>
+        </button>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 1: ตั้งค่าซิงก์ข้อมูลระหว่างคอมพิวเตอร์และมือถือ (Cloud Sync)   -->
+    <!-- ===================================================================== -->
+    <div id="sync-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 animate-fade-in my-auto">
+            <div class="flex items-center justify-between pb-3.5 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="cloud" class="w-4 h-4"></i>
+                    </span>
+                    เชื่อมต่อซิงก์ข้อมูล คอม - มือถือ
+                </h3>
+                <button onclick="closeSyncModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="mt-4 space-y-4">
+                <!-- กล่องแสดงสถานะปัจจุบัน -->
+                <div id="sync-modal-banner" class="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-start gap-3">
+                    <i data-lucide="info" class="w-5 h-5 text-indigo-600 shrink-0 mt-0.5"></i>
+                    <div class="text-xs text-indigo-950 leading-relaxed" id="sync-modal-status-desc">
+                        กำลังตรวจสอบการเชื่อมต่อคลาวด์...
+                    </div>
+                </div>
+
+                <!-- ส่วนที่ 1: รหัสห้องซิงก์ส่วนตัว (Sync Vault ID) -->
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        1. รหัสห้องซิงก์ส่วนตัว (ใช้รหัสเดียวกันทั้งคอมและมือถือ)
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="text" id="vault-id-input" placeholder="เช่น chatchai-rsu" 
+                            class="flex-1 px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm font-mono font-semibold text-indigo-700 focus:outline-none focus:border-indigo-500">
+                        <button type="button" onclick="applyVaultId()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold transition shrink-0">
+                            เชื่อมต่อห้องนี้
+                        </button>
+                    </div>
+                    <p class="text-[11px] text-slate-500">
+                        * ตั้งเป็นรหัสจำง่ายๆ ของคุณเอง เช่น <code class="bg-white px-1 py-0.5 rounded border">fin308-me</code> แล้วกรอกรหัสเดียวกันนี้ในอีกเครื่อง ข้อมูลจะวิ่งหากันทันที
+                    </p>
+
+                    <!-- คัดลอกลิงก์เชื่อมอัตโนมัติ -->
+                    <div class="pt-2 border-t border-slate-200/80">
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1.5">หรือส่งลิงก์นี้ไปเปิดในอีกเครื่อง (เชื่อมห้องให้อัตโนมัติ):</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="share-vault-url" readonly class="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-600 font-mono truncate">
+                            <button type="button" onclick="copyShareVaultUrl()" class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center gap-1.5 shrink-0">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i> คัดลอกลิงก์
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ส่วนที่ 2: ตั้งค่า Firebase ส่วนตัว (สำหรับเมื่อนำไฟล์ไปอัปขึ้น Netlify) -->
+                <div class="border border-slate-200 rounded-2xl overflow-hidden">
+                    <button type="button" onclick="toggleFirebaseConfigSection()" class="w-full px-4 py-3 bg-white hover:bg-slate-50 flex items-center justify-between text-left transition">
+                        <span class="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-2">
+                            <i data-lucide="flame" class="w-4 h-4 text-orange-500"></i>
+                            2. ตั้งค่าคลาวด์ส่วนตัว (บันทึกฝังในเว็บแล้ว)
+                        </span>
+                        <i data-lucide="chevron-down" id="fb-config-chevron" class="w-4 h-4 text-slate-400 transition-transform"></i>
+                    </button>
+                    <div id="fb-config-panel" class="hidden p-4 bg-slate-50 border-t border-slate-200 space-y-3">
+                        <p class="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 leading-relaxed">
+                            <b>บันทึกค่าโปรเจกต์ <code class="bg-white px-1 rounded border border-emerald-200">studyvault-rsu</code> ลงในไฟล์เว็บเรียบร้อยแล้ว!</b> เมื่อคุณอัปโหลดไฟล์ <code class="bg-white px-1 rounded border border-emerald-200">index.html</code> นี้ขึ้น Netlify ระบบจะเชื่อมต่อคลาวด์ให้อัตโนมัติทั้งบนคอมและมือถือโดยไม่ต้องวางโค้ดซ้ำอีก
+                        </p>
+                        <textarea id="custom-firebase-config-input" rows="4" placeholder='{"apiKey": "AIzaSy...", "authDomain": "...", "projectId": "..."}' 
+                            class="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-mono focus:outline-none focus:border-indigo-500"></textarea>
+                        <div class="flex items-center justify-end gap-2">
+                            <button type="button" onclick="clearCustomFirebaseConfig()" class="px-3 py-1.5 rounded-lg text-xs text-slate-600 hover:bg-slate-200/70 font-medium transition">
+                                คืนค่าเริ่มต้น (studyvault-rsu)
+                            </button>
+                            <button type="button" onclick="saveCustomFirebaseConfig()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition">
+                                บันทึกและเชื่อมต่อคลาวด์
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 2: เพิ่ม / แก้ไข ข้อมูล / รูปภาพ / การบ้าน                       -->
+    <!-- ===================================================================== -->
+    <div id="add-item-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-100 animate-fade-in my-auto">
+            <div class="flex items-center justify-between pb-3.5 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="file-pen-line" class="w-4 h-4"></i>
+                    </span>
+                    <span id="item-modal-heading">บันทึกเลกเชอร์ / จดการบ้าน</span>
+                </h3>
+                <button onclick="closeAddItemModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <form id="add-item-form" onsubmit="handleSaveItem(event)" class="mt-4 space-y-4">
+                <input type="hidden" id="edit-item-id" value="">
+
+                <!-- เลือกประเภทข้อมูล -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">เลือกประเภทการบันทึก</label>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button type="button" id="type-btn-note" onclick="selectItemType('NOTE')" 
+                            class="py-2.5 px-3 rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-700 font-semibold text-sm flex items-center justify-center gap-2 transition">
+                            <i data-lucide="book-open" class="w-4 h-4"></i> โน้ต / เลกเชอร์
+                        </button>
+                        <button type="button" id="type-btn-hw" onclick="selectItemType('HOMEWORK')" 
+                            class="py-2.5 px-3 rounded-xl border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-semibold text-sm flex items-center justify-center gap-2 transition">
+                            <i data-lucide="list-todo" class="w-4 h-4 text-amber-500"></i> การบ้าน / งานส่ง
+                        </button>
+                    </div>
+                </div>
+
+                <!-- เลือกวิชา -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">รายวิชา <span class="text-rose-500">*</span></label>
+                    <div class="flex gap-2">
+                        <select id="item-subject-select" required class="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                        </select>
+                        <button type="button" onclick="openQuickNewSubjectInModal()" class="px-3 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs sm:text-sm font-semibold transition shrink-0 flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> วิชาใหม่
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ชื่อหัวข้อ -->
+                <div>
+                    <label id="item-title-label" class="block text-sm font-medium text-slate-700 mb-1">หัวข้อ / เรื่องที่เรียน <span class="text-rose-500">*</span></label>
+                    <input type="text" id="item-title" required placeholder="เช่น บทที่ 1 แนวคิดการเงิน, สูตรคำนวณดอกเบี้ย..." 
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                </div>
+
+                <!-- ช่องเลือกวันกำหนดส่ง (เฉพาะการบ้าน) -->
+                <div id="due-date-container" class="hidden bg-amber-50/80 border border-amber-200 rounded-2xl p-3.5 animate-fade-in">
+                    <label class="block text-sm font-semibold text-amber-900 mb-1.5 flex items-center gap-1.5">
+                        <i data-lucide="calendar-check" class="w-4 h-4 text-amber-600"></i> วันกำหนดส่งงาน (Due Date)
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input type="date" id="item-due-date" class="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl text-sm text-slate-800 focus:outline-none focus:border-amber-500">
+                        <input type="time" id="item-due-time" value="23:59" class="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl text-sm text-slate-800 focus:outline-none focus:border-amber-500">
+                    </div>
+                    <p class="text-[11px] text-amber-700 mt-1.5">* สามารถเว้นว่างได้หากอาจารย์ยังไม่กำหนดวันส่ง</p>
+                </div>
+
+                <!-- พื้นที่อัปโหลดหรือวางรูปภาพ (รองรับหลายรูป) -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-sm font-medium text-slate-700">แนบรูปภาพสไลด์ / ชีทงาน (ถ้ามี)</label>
+                        <span id="image-count-label" class="text-xs font-semibold text-indigo-600 hidden">0 รูป</span>
+                    </div>
+                    <div id="drop-zone" onclick="document.getElementById('item-image-input').click()" 
+                        ondragover="event.preventDefault(); this.classList.add('border-indigo-500', 'bg-indigo-50/40');"
+                        ondragleave="this.classList.remove('border-indigo-500', 'bg-indigo-50/40');"
+                        ondrop="handleImageDrop(event)"
+                        class="border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50 hover:bg-indigo-50/30 rounded-2xl p-4 text-center cursor-pointer transition relative group">
+                        <input type="file" id="item-image-input" accept="image/*" multiple class="hidden" onchange="handleImageFileSelect(event)">
+                        
+                        <div id="upload-placeholder" class="space-y-1.5 py-1">
+                            <div class="w-10 h-10 rounded-full bg-white shadow-2xs border border-slate-100 text-indigo-600 flex items-center justify-center mx-auto group-hover:scale-110 transition">
+                                <i data-lucide="images" class="w-5 h-5"></i>
+                            </div>
+                            <p class="text-xs sm:text-sm font-medium text-slate-700">แตะเพื่อเลือกรูปภาพ (เลือกได้หลายรูป), ลากวาง หรือกด Ctrl+V วางรูปซ้ำได้</p>
+                            <p class="text-[11px] text-slate-400">บีบอัดขนาดอัตโนมัติเพื่อให้ซิงก์ข้ามคอม-มือถือได้รวดเร็ว</p>
+                        </div>
+
+                        <!-- แสดงตัวอย่างรูปภาพหลายรูป (Thumbnails) -->
+                        <div id="image-preview-container" class="hidden space-y-2.5 text-left" onclick="event.stopPropagation()">
+                            <div id="image-thumbnails-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-52 overflow-y-auto p-1">
+                                <!-- Thumbnails ถูกสร้างด้วย JS -->
+                            </div>
+                            <div class="flex items-center justify-between pt-1 border-t border-slate-200/70">
+                                <button type="button" onclick="document.getElementById('item-image-input').click()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition">
+                                    <i data-lucide="image-plus" class="w-3.5 h-3.5"></i> เพิ่มรูปอีก
+                                </button>
+                                <button type="button" onclick="clearSelectedImage(event)" class="text-xs font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 transition">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> ลบรูปทั้งหมด
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- รายละเอียดเพิ่มเติม -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">รายละเอียด / โจทย์การบ้าน / สรุปย่อ</label>
+                    <textarea id="item-note" rows="3" placeholder="จดคำสั่งอาจารย์ จุดสำคัญที่ออกสอบ หรือลิงก์ส่งงาน..." 
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"></textarea>
+                </div>
+
+                <!-- ปุ่มบันทึก -->
+                <div class="pt-2 flex items-center justify-end gap-2">
+                    <button type="button" onclick="closeAddItemModal()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium transition">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" id="save-item-btn" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-md shadow-indigo-200 transition flex items-center gap-2">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>บันทึกลงคลัง</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 3: สร้าง / แก้ไข รายวิชา                                         -->
+    <!-- ===================================================================== -->
+    <div id="add-subject-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-fade-in">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center">
+                        <i data-lucide="book-plus" class="w-4 h-4"></i>
+                    </span>
+                    <span id="subject-modal-title">เพิ่มรายวิชาใหม่</span>
+                </h3>
+                <button onclick="closeAddSubjectModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleSaveSubject(event)" class="mt-4 space-y-4">
+                <input type="hidden" id="edit-subject-id" value="">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">รหัสวิชา / ชื่อวิชา <span class="text-rose-500">*</span></label>
+                    <input type="text" id="subject-code" required placeholder="เช่น FIN308, วิชา306, RSU180" 
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">คำอธิบายรายวิชา (ไม่บังคับ)</label>
+                    <input type="text" id="subject-desc" placeholder="เช่น การเงินธุรกิจ, กฎหมายเบื้องต้น..." 
+                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">เลือกสีประจำวิชา</label>
+                    <div class="flex gap-2.5" id="color-picker">
+                        <button type="button" data-color="indigo" onclick="selectSubjectColor('indigo')" class="color-opt w-8 h-8 rounded-full bg-indigo-600 transition"></button>
+                        <button type="button" data-color="emerald" onclick="selectSubjectColor('emerald')" class="color-opt w-8 h-8 rounded-full bg-emerald-600 transition"></button>
+                        <button type="button" data-color="amber" onclick="selectSubjectColor('amber')" class="color-opt w-8 h-8 rounded-full bg-amber-500 transition"></button>
+                        <button type="button" data-color="rose" onclick="selectSubjectColor('rose')" class="color-opt w-8 h-8 rounded-full bg-rose-600 transition"></button>
+                        <button type="button" data-color="sky" onclick="selectSubjectColor('sky')" class="color-opt w-8 h-8 rounded-full bg-sky-600 transition"></button>
+                        <button type="button" data-color="violet" onclick="selectSubjectColor('violet')" class="color-opt w-8 h-8 rounded-full bg-violet-600 transition"></button>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end gap-2">
+                    <button type="button" onclick="closeAddSubjectModal()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium transition">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-md shadow-indigo-200 transition">
+                        บันทึกรายวิชา
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 4: จัดการรายวิชาทั้งหมด (แก้ไข / ลบรายวิชา)                      -->
+    <!-- ===================================================================== -->
+    <div id="manage-subjects-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-fade-in">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    </span>
+                    จัดการรายวิชา (แก้ไข / ลบ)
+                </h3>
+                <button onclick="closeManageSubjectsModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="mt-4">
+                <p class="text-xs text-slate-500 mb-3">กดปุ่มดินสอเพื่อแก้ไขชื่อ/สี หรือกดปุ่มถังขยะสีแดงเพื่อลบรายวิชาที่ไม่ต้องการ</p>
+                <div id="manage-subjects-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                </div>
+            </div>
+
+            <div class="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <button onclick="closeManageSubjectsModal(); openAddSubjectModal();" class="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-semibold transition flex items-center gap-1.5">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> เพิ่มวิชาใหม่
+                </button>
+                <button onclick="closeManageSubjectsModal()" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold transition">
+                    เสร็จสิ้น
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 5: สำรองข้อมูลและย้ายเครื่อง (Export / Import JSON)              -->
+    <!-- ===================================================================== -->
+    <div id="backup-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-fade-in">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                        <i data-lucide="database" class="w-4 h-4"></i>
+                    </span>
+                    สำรองข้อมูล & กู้คืน (.json)
+                </h3>
+                <button onclick="closeBackupModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="mt-4 space-y-4">
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                    <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4 text-indigo-600"></i> 1. ดาวน์โหลดไฟล์สำรองข้อมูล
+                    </h4>
+                    <p class="text-xs text-slate-500 mt-1 mb-3">บันทึกข้อมูลรายวิชา โน้ต รูปภาพ และการบ้านทั้งหมดเป็นไฟล์เก็บไว้ในเครื่อง</p>
+                    <button onclick="exportBackupData()" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-2xs transition flex items-center justify-center gap-2">
+                        <i data-lucide="file-down" class="w-4 h-4"></i> ดาวน์โหลดไฟล์สำรอง (.json)
+                    </button>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                    <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="upload" class="w-4 h-4 text-emerald-600"></i> 2. กู้คืนข้อมูลจากไฟล์สำรอง
+                    </h4>
+                    <p class="text-xs text-slate-500 mt-1 mb-3">เลือกไฟล์ `.json` ที่เคยดาวน์โหลดไว้เพื่อนำข้อมูลทั้งหมดกลับมา (และซิงก์ขึ้นคลาวด์ให้อัตโนมัติ)</p>
+                    <input type="file" id="import-file-input" accept=".json" class="hidden" onchange="importBackupData(event)">
+                    <button onclick="document.getElementById('import-file-input').click()" class="w-full py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition flex items-center justify-center gap-2">
+                        <i data-lucide="file-up" class="w-4 h-4"></i> เลือกไฟล์สำรองเพื่อนำเข้า
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 6: ดูรูปภาพขนาดเต็ม & รายละเอียด (Multi-image Lightbox)       -->
+    <!-- ===================================================================== -->
+    <div id="lightbox-modal" onclick="closeLightbox()" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex-col items-center justify-center p-4">
+        <div class="max-w-4xl w-full flex flex-col items-center gap-3" onclick="event.stopPropagation()">
+            <div class="w-full flex items-center justify-between text-white gap-2">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span id="lightbox-subject" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-indigo-600 text-white shrink-0"></span>
+                        <span id="lightbox-counter" class="text-xs font-mono text-slate-300 hidden"></span>
+                    </div>
+                    <h4 id="lightbox-title" class="text-base sm:text-lg font-bold mt-1 truncate"></h4>
+                </div>
+                <button onclick="closeLightbox()" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition shrink-0">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="relative w-full bg-black/40 rounded-2xl p-2 border border-white/10 max-h-[70vh] overflow-auto flex items-center justify-center min-h-[200px]">
+                <button type="button" id="lightbox-prev-btn" onclick="stepLightbox(-1)" class="hidden absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/65 hover:bg-black/85 text-white items-center justify-center transition z-10">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                </button>
+                <img id="lightbox-img" src="" alt="Full view" class="hidden max-w-full max-h-[65vh] rounded-xl object-contain">
+                <div id="lightbox-no-img" class="hidden text-center py-8 px-4 text-slate-400 text-sm">
+                    รายการนี้ไม่มีรูปภาพแนบไว้
+                </div>
+                <button type="button" id="lightbox-next-btn" onclick="stepLightbox(1)" class="hidden absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/65 hover:bg-black/85 text-white items-center justify-center transition z-10">
+                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- แถบเลือกรูปย่อยเมื่อมีหลายรูป -->
+            <div id="lightbox-thumbs" class="hidden items-center gap-2 overflow-x-auto max-w-full py-1 px-1"></div>
+
+            <p id="lightbox-note" class="text-sm text-slate-300 bg-white/10 px-4 py-3 rounded-xl w-full max-w-2xl text-center whitespace-pre-line hidden"></p>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 7: ยืนยันการลบ (Custom Confirm Dialog)                           -->
+    <!-- ===================================================================== -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 animate-fade-in text-center">
+            <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+            </div>
+            <h3 id="confirm-title" class="text-lg font-bold text-slate-800">ยืนยันการลบข้อมูล?</h3>
+            <p id="confirm-message" class="text-sm text-slate-500 mt-1">ข้อมูลนี้จะถูกลบออกอย่างถาวร</p>
+            <div class="mt-5 flex items-center justify-center gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium transition">
+                    ยกเลิก
+                </button>
+                <button id="confirm-yes-btn" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold shadow-2xs transition">
+                    ยืนยันการลบ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast แจ้งเตือนมุมขวาล่าง -->
+    <div id="toast-container" class="fixed bottom-20 sm:bottom-5 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ===================================================================== -->
+    <!-- Application Logic: Firebase Real-time Sync + LocalStorage Fallback    -->
+    <!-- ===================================================================== -->
+    <script type="module">
+        import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // คีย์สำหรับเก็บข้อมูลสำรองในเครื่อง (Fallback & Cache)
+        const STORAGE_KEY_SUBJECTS = 'studyvault_v3_subjects';
+        const STORAGE_KEY_ITEMS = 'studyvault_v3_items';
+        const STORAGE_KEY_VAULT_ID = 'studyvault_v3_vault_id';
+        const STORAGE_KEY_CUSTOM_FB = 'studyvault_v3_custom_fb_config';
+
+        // ค่าเชื่อมต่อคลาวด์ส่วนตัวที่บันทึกฝังไว้ถาวรในโค้ด (ใช้ได้ทุกเครื่องทันทีหลังอัปขึ้น Netlify)
+        const BUILTIN_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCAiYc5GOMTaVRlqls2ZZjz-DQqmQWDI-8",
+            authDomain: "studyvault-rsu.firebaseapp.com",
+            projectId: "studyvault-rsu",
+            storageBucket: "studyvault-rsu.firebasestorage.app",
+            messagingSenderId: "1079041808221",
+            appId: "1:1079041808221:web:ff507e0835b448a0f33ab4",
+            measurementId: "G-84R8ERYYL6"
+        };
+
+        // สถานะข้อมูลหลัก
+        let subjects = [];
+        let items = [];
+        let selectedSubjectId = 'ALL';
+        let currentFilter = 'ALL';
+        let currentItemType = 'NOTE';
+        let selectedColor = 'indigo';
+        let currentImages = []; // รองรับหลายรูปภาพ (Array of Base64 data URLs)
+        let pendingConfirmCallback = null;
+
+        // สถานะ Lightbox แบบหลายรูป
+        let lightboxImages = [];
+        let lightboxIndex = 0;
+
+        // Helper ดึงรายการรูปภาพของ item (รองรับทั้ง item.images แบบหลายรูป และ item.imageUrl แบบเดิม)
+        function getItemImages(item) {
+            if (!item) return [];
+            if (Array.isArray(item.images) && item.images.length > 0) {
+                return item.images.filter(Boolean);
+            }
+            if (item.imageUrl) {
+                return [item.imageUrl];
+            }
+            return [];
+        }
+
+        // สถานะ Firebase Cloud Sync
+        let firebaseApp = null;
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let isCloudConnected = false;
+        let unsubSubjects = null;
+        let unsubItems = null;
+        let vaultId = '';
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'studyvault-rsu-shared';
+
+        // =========================================================================
+        // 1. จัดการรหัสห้องซิงก์ (Sync Vault ID & URL Param ?vault=...)
+        // =========================================================================
+        function sanitizeVaultId(raw) {
+            return String(raw || '')
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9_-]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '') || 'studyvault-default';
+        }
+
+        function initVaultId() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const fromUrl = urlParams.get('vault');
+                if (fromUrl && fromUrl.trim()) {
+                    vaultId = sanitizeVaultId(fromUrl);
+                    localStorage.setItem(STORAGE_KEY_VAULT_ID, vaultId);
+                } else {
+                    const saved = localStorage.getItem(STORAGE_KEY_VAULT_ID);
+                    vaultId = saved ? sanitizeVaultId(saved) : 'studyvault-rsu-main';
+                    localStorage.setItem(STORAGE_KEY_VAULT_ID, vaultId);
+                }
+            } catch (e) {
+                vaultId = 'studyvault-rsu-main';
+            }
+            updateVaultIdUI();
+        }
+
+        function updateVaultIdUI() {
+            const sidebarCode = document.getElementById('sidebar-vault-code');
+            const vaultInput = document.getElementById('vault-id-input');
+            const shareUrlInput = document.getElementById('share-vault-url');
+
+            if (sidebarCode) sidebarCode.textContent = vaultId;
+            if (vaultInput) vaultInput.value = vaultId;
+
+            if (shareUrlInput) {
+                try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('vault', vaultId);
+                    shareUrlInput.value = url.toString();
+                } catch (e) {
+                    shareUrlInput.value = `${window.location.origin}${window.location.pathname}?vault=${vaultId}`;
+                }
+            }
+        }
+
+        const colorStyles = {
+            indigo:  { bg: 'bg-indigo-50',  text: 'text-indigo-700',  border: 'border-indigo-200',  dot: 'bg-indigo-500' },
+            emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+            amber:   { bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   dot: 'bg-amber-500' },
+            rose:    { bg: 'bg-rose-50',    text: 'text-rose-700',    border: 'border-rose-200',    dot: 'bg-rose-500' },
+            sky:     { bg: 'bg-sky-50',     text: 'text-sky-700',     border: 'border-sky-200',     dot: 'bg-sky-500' },
+            violet:  { bg: 'bg-violet-50',  text: 'text-violet-700',  border: 'border-violet-200',  dot: 'bg-violet-500' },
+        };
+
+        // =========================================================================
+        // 2. เชื่อมต่อ Firebase Firestore (รองรับ Config ที่ฝังไว้ถาวร + Config เพิ่มเติม)
+        // =========================================================================
+        function getActiveFirebaseConfig() {
+            // 1. ตรวจสอบว่าผู้ใช้ตั้งค่า Firebase Config อื่นเพิ่มเติมไว้ในเครื่องไหม
+            try {
+                const customRaw = localStorage.getItem(STORAGE_KEY_CUSTOM_FB);
+                if (customRaw) {
+                    const parsed = JSON.parse(customRaw);
+                    if (parsed && parsed.apiKey && parsed.projectId) {
+                        return { config: parsed, isCustom: true };
+                    }
+                }
+            } catch (e) {
+                console.warn("Invalid custom firebase config:", e);
+            }
+
+            // 2. ใช้ค่า Firebase Config ส่วนตัวที่บันทึกฝังไว้ในโค้ด (studyvault-rsu) เป็นค่าเริ่มต้นอัตโนมัติ
+            if (BUILTIN_FIREBASE_CONFIG && BUILTIN_FIREBASE_CONFIG.apiKey && BUILTIN_FIREBASE_CONFIG.projectId) {
+                return { config: BUILTIN_FIREBASE_CONFIG, isCustom: true };
+            }
+
+            // 3. สำรอง: ใช้ Firebase Config ของระบบถ้ามี
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                try {
+                    const envConfig = typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+                    if (envConfig && envConfig.apiKey) {
+                        return { config: envConfig, isCustom: false };
+                    }
+                } catch (e) {
+                    console.warn("Invalid env firebase config:", e);
+                }
+            }
+
+            return null;
+        }
+
+        async function initCloudSync() {
+            // ล้าง listener เก่าก่อน
+            if (unsubSubjects) { unsubSubjects(); unsubSubjects = null; }
+            if (unsubItems) { unsubItems(); unsubItems = null; }
+
+            const fbSetup = getActiveFirebaseConfig();
+            if (!fbSetup) {
+                setSyncStatus('OFFLINE', 'โหมดออฟไลน์ในเครื่อง', 'ขณะนี้เว็บกำลังเก็บข้อมูลในเครื่อง (Local Storage) หากอัปขึ้น Netlify และต้องการให้ซิงก์ข้ามคอม-มือถืออัตโนมัติ ให้กดตั้งค่าคลาวด์ส่วนตัวด้านล่าง หรือคัดลอกไฟล์สำรองไปเปิดอีกเครื่องครับ');
+                loadLocalFallback();
+                return;
+            }
+
+            try {
+                setSyncStatus('CONNECTING', 'กำลังซิงก์คลาวด์...', 'กำลังเชื่อมต่อห้องซิงก์ออนไลน์...');
+                
+                if (firebaseApp) {
+                    try { await deleteApp(firebaseApp); } catch (e) {}
+                }
+
+                firebaseApp = initializeApp(fbSetup.config, 'studyvault-' + Date.now());
+                auth = getAuth(firebaseApp);
+                db = getFirestore(firebaseApp);
+
+                // RULE 3: Auth Before Queries
+                if (!fbSetup.isCustom && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                currentUser = auth.currentUser;
+                if (!currentUser) throw new Error("Authentication failed");
+
+                isCloudConnected = true;
+                const shortMobileLabel = window.innerWidth < 640 ? 'ออนไลน์' : `ซิงก์ออนไลน์ (${vaultId})`;
+                setSyncStatus('ONLINE', shortMobileLabel, `เชื่อมต่อคลาวด์สำเร็จ! ข้อมูลทั้งหมดในห้อง "${vaultId}" จะซิงก์แบบเรียลไทม์ระหว่างคอมพิวเตอร์และมือถือทุกเครื่องที่เปิดรหัสห้องเดียวกัน`);
+
+                // เริ่มฟังข้อมูลแบบ Real-time จาก Firestore (RULE 1 & RULE 2)
+                startRealtimeListeners();
+
+            } catch (error) {
+                console.error("Cloud sync error:", error);
+                isCloudConnected = false;
+                setSyncStatus('OFFLINE', 'โหมดออฟไลน์ในเครื่อง', 'ไม่สามารถเชื่อมต่อคลาวด์ได้ในขณะนี้ ระบบกำลังบันทึกข้อมูลลงในเครื่องแทน (ข้อมูลไม่หายและจะไม่สูญเสีย)');
+                loadLocalFallback();
+            }
+        }
+
+        function startRealtimeListeners() {
+            if (!db || !currentUser) return;
+
+            // ใช้ Path ตาม RULE 1: /artifacts/{appId}/public/data/{collectionName}
+            // แยกห้องซิงก์ด้วย vaultId ในชื่อ collection เพื่อความปลอดภัยและเป็นส่วนตัวของแต่ละห้อง
+            const subColRef = collection(db, 'artifacts', appId, 'public', 'data', `sv_${vaultId}_subjects`);
+            const itemColRef = collection(db, 'artifacts', appId, 'public', 'data', `sv_${vaultId}_items`);
+
+            let initialSubLoaded = false;
+
+            unsubSubjects = onSnapshot(subColRef, (snapshot) => {
+                const cloudSubs = [];
+                snapshot.forEach(docSnap => {
+                    cloudSubs.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                // เรียงลำดับใน JS (RULE 2)
+                cloudSubs.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+                if (cloudSubs.length === 0 && !initialSubLoaded) {
+                    initialSubLoaded = true;
+                    // หากห้องซิงก์นี้ยังว่างเปล่า ให้สร้างวิชาเริ่มต้นให้อัตโนมัติ
+                    seedDefaultSubjectsToCloud();
+                } else {
+                    initialSubLoaded = true;
+                    subjects = cloudSubs;
+                    saveLocalCache();
+                    renderSidebar();
+                    renderMainView();
+                }
+            }, (err) => {
+                console.error("Subjects snapshot error:", err);
+                setSyncStatus('OFFLINE', 'ออฟไลน์ (มีข้อผิดพลาดซิงก์)', 'เกิดข้อผิดพลาดในการซิงก์รายวิชา กรุณาตรวจสอบสิทธิ์ Firestore Rules');
+            });
+
+            unsubItems = onSnapshot(itemColRef, (snapshot) => {
+                const cloudItems = [];
+                snapshot.forEach(docSnap => {
+                    cloudItems.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                // เรียงลำดับใน JS (RULE 2)
+                cloudItems.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+                items = cloudItems;
+                saveLocalCache();
+                renderSidebar();
+                renderMainView();
+            }, (err) => {
+                console.error("Items snapshot error:", err);
+            });
+        }
+
+        async function seedDefaultSubjectsToCloud() {
+            const defaults = [
+                { id: 'sub_fin308', code: 'FIN308', desc: 'การเงินธุรกิจและการลงทุน', color: 'indigo', createdAt: Date.now() },
+                { id: 'sub_306',    code: 'วิชา306', desc: 'เลกเชอร์และเอกสารประกอบการเรียน', color: 'emerald', createdAt: Date.now() + 1 },
+                { id: 'sub_rsu180', code: 'RSU180', desc: 'วิชาศึกษาทั่วไป', color: 'amber', createdAt: Date.now() + 2 }
+            ];
+            for (const sub of defaults) {
+                await persistSubject(sub);
+            }
+        }
+
+        // =========================================================================
+        // 3. บันทึกและลบข้อมูล (รองรับทั้ง Cloud Firestore และ Local Storage)
+        // =========================================================================
+        function loadLocalFallback() {
+            try {
+                const rawSubs = localStorage.getItem(STORAGE_KEY_SUBJECTS);
+                const rawItems = localStorage.getItem(STORAGE_KEY_ITEMS);
+
+                if (rawSubs) {
+                    subjects = JSON.parse(rawSubs);
+                } else {
+                    subjects = [
+                        { id: 'sub_fin308', code: 'FIN308', desc: 'การเงินธุรกิจและการลงทุน', color: 'indigo', createdAt: Date.now() },
+                        { id: 'sub_306',    code: 'วิชา306', desc: 'เลกเชอร์และเอกสารประกอบการเรียน', color: 'emerald', createdAt: Date.now() + 1 },
+                        { id: 'sub_rsu180', code: 'RSU180', desc: 'วิชาศึกษาทั่วไป', color: 'amber', createdAt: Date.now() + 2 }
+                    ];
+                    saveLocalCache();
+                }
+
+                items = rawItems ? JSON.parse(rawItems) : [];
+            } catch (e) {
+                subjects = [];
+                items = [];
+            }
+            renderSidebar();
+            renderMainView();
+        }
+
+        function saveLocalCache() {
+            try {
+                localStorage.setItem(STORAGE_KEY_SUBJECTS, JSON.stringify(subjects));
+                localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(items));
+            } catch (e) {
+                console.warn("Local storage quota warning:", e);
+            }
+        }
+
+        async function persistSubject(subObj) {
+            if (isCloudConnected && db && currentUser) {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', `sv_${vaultId}_subjects`, subObj.id);
+                await setDoc(docRef, subObj);
+            } else {
+                const idx = subjects.findIndex(s => s.id === subObj.id);
+                if (idx !== -1) subjects[idx] = subObj;
+                else subjects.push(subObj);
+                saveLocalCache();
+                renderSidebar();
+                renderMainView();
+            }
+        }
+
+        async function removeSubjectFromStore(subjectId) {
+            if (isCloudConnected && db && currentUser) {
+                const subRef = doc(db, 'artifacts', appId, 'public', 'data', `sv_${vaultId}_subjects`, subjectId);
+                await deleteDoc(subRef);
+
+                const relatedItems = items.filter(i => i.subjectId === subjectId);
+                for (const item of relatedItems) {
+                    const itemRef = doc(db, 'artifacts', appId, 'public', 'data', `sv_${vaultId}_items`, item.id);
+                    await deleteDoc(itemRef);
+                }
+            } else {
+                subjects = subjects.filter(s => s.id !== subjectId);
+                items = items.filter(i => i.subjectId !== subjectId);
+                saveLocalCache();
+                renderSidebar();
+                renderMainView();
+            }
+        }
+
+        async function persistItem(itemObj) {
+            if (isCloudConnected && db && currentUser) {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', `sv_${vaultId}_items`, itemObj.id);
+                await setDoc(docRef, itemObj);
+            } else {
+                const idx = items.findIndex(i => i.id === itemObj.id);
+                if (idx !== -1) items[idx] = itemObj;
+                else items.unshift(itemObj);
+                saveLocalCache();
+                renderSidebar();
+                renderMainView();
+            }
+        }
+
+        async function removeItemFromStore(itemId) {
+            if (isCloudConnected && db && currentUser) {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', `sv_${vaultId}_items`, itemId);
+                await deleteDoc(docRef);
+            } else {
+                items = items.filter(i => i.id !== itemId);
+                saveLocalCache();
+                renderSidebar();
+                renderMainView();
+            }
+        }
+
+        // =========================================================================
+        // 4. UI สถานะการซิงก์ & ตั้งค่าห้องซิงก์
+        // =========================================================================
+        function setSyncStatus(state, label, desc) {
+            const pill = document.getElementById('sync-status-pill');
+            const dot = document.getElementById('sync-status-dot');
+            const text = document.getElementById('sync-status-text');
+            const banner = document.getElementById('sync-modal-banner');
+            const descEl = document.getElementById('sync-modal-status-desc');
+
+            if (text) text.textContent = label;
+            if (descEl) descEl.textContent = desc;
+
+            if (state === 'ONLINE') {
+                pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 hover:bg-emerald-100 transition shrink-0';
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+                if (banner) banner.className = 'p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-3 text-emerald-900';
+            } else if (state === 'CONNECTING') {
+                pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1.5 transition shrink-0';
+                dot.className = 'w-2 h-2 rounded-full bg-indigo-500 animate-ping';
+            } else {
+                pill.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1.5 hover:bg-amber-100 transition shrink-0';
+                dot.className = 'w-2 h-2 rounded-full bg-amber-500';
+                if (banner) banner.className = 'p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-amber-950';
+            }
+        }
+
+        window.openSyncModal = function() {
+            updateVaultIdUI();
+            const customRaw = localStorage.getItem(STORAGE_KEY_CUSTOM_FB);
+            const configToDisplay = customRaw ? customRaw : JSON.stringify(BUILTIN_FIREBASE_CONFIG, null, 2);
+            document.getElementById('custom-firebase-config-input').value = configToDisplay;
+
+            const modal = document.getElementById('sync-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        };
+
+        window.closeSyncModal = function() {
+            const modal = document.getElementById('sync-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.applyVaultId = async function() {
+            const rawVal = document.getElementById('vault-id-input').value;
+            if (!rawVal.trim()) {
+                showToast('กรุณากรอกรหัสห้องซิงก์', 'error');
+                return;
+            }
+            vaultId = sanitizeVaultId(rawVal);
+            localStorage.setItem(STORAGE_KEY_VAULT_ID, vaultId);
+            
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.set('vault', vaultId);
+                window.history.replaceState({}, '', url);
+            } catch (e) {}
+
+            updateVaultIdUI();
+            selectedSubjectId = 'ALL';
+            showToast(`เปลี่ยนไปเชื่อมต่อห้อง "${vaultId}" แล้ว`, 'success');
+            await initCloudSync();
+        };
+
+        window.copyShareVaultUrl = function() {
+            const urlInput = document.getElementById('share-vault-url');
+            urlInput.select();
+            document.execCommand('copy');
+            showToast('คัดลอกลิงก์ซิงก์แล้ว! นำไปเปิดในอีกเครื่องได้เลย', 'success');
+        };
+
+        window.toggleFirebaseConfigSection = function() {
+            const panel = document.getElementById('fb-config-panel');
+            const chevron = document.getElementById('fb-config-chevron');
+            panel.classList.toggle('hidden');
+            chevron.classList.toggle('rotate-180');
+        };
+
+        window.saveCustomFirebaseConfig = async function() {
+            const raw = document.getElementById('custom-firebase-config-input').value.trim();
+            if (!raw) {
+                showToast('กรุณาวางโค้ด Firebase Config ก่อนบันทึก', 'error');
+                return;
+            }
+            try {
+                // แปลงข้อความที่ผู้ใช้ก๊อปปี้มา (รองรับทั้ง JSON และ JS Object snippet)
+                let cleaned = raw;
+                const matchObj = raw.match(/\{[\s\S]*\}/);
+                if (matchObj) cleaned = matchObj[0];
+                // เติม double quotes ให้ key กรณีผู้ใช้ก๊อปปี้แบบ JS object มาตรงๆ
+                cleaned = cleaned.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/'/g, '"');
+                const parsed = JSON.parse(cleaned);
+
+                if (!parsed.apiKey || !parsed.projectId) {
+                    throw new Error("Missing apiKey or projectId");
+                }
+
+                localStorage.setItem(STORAGE_KEY_CUSTOM_FB, JSON.stringify(parsed));
+                showToast('บันทึกการตั้งค่าคลาวด์สำเร็จ! กำลังเชื่อมต่อ...', 'success');
+                await initCloudSync();
+            } catch (e) {
+                showToast('รูปแบบโค้ด Config ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง', 'error');
+            }
+        };
+
+        window.clearCustomFirebaseConfig = async function() {
+            localStorage.removeItem(STORAGE_KEY_CUSTOM_FB);
+            document.getElementById('custom-firebase-config-input').value = JSON.stringify(BUILTIN_FIREBASE_CONFIG, null, 2);
+            showToast('คืนค่าเริ่มต้นโปรเจกต์ studyvault-rsu เรียบร้อยแล้ว', 'success');
+            await initCloudSync();
+        };
+
+        // =========================================================================
+        // 5. การแสดงผล Sidebar และ หน้าหลัก
+        // =========================================================================
+        function renderSidebar() {
+            const listEl = document.getElementById('subject-list');
+            const totalCount = items.length;
+
+            let html = `
+                <button onclick="selectSubject('ALL')" 
+                    class="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition shrink-0 lg:w-full ${selectedSubjectId === 'ALL' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'}">
+                    <span class="flex items-center gap-2.5">
+                        <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                        <span>ทุกวิชาทั้งหมด</span>
+                    </span>
+                    <span class="text-xs px-2 py-0.5 rounded-full ${selectedSubjectId === 'ALL' ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-600'}">${totalCount}</span>
+                </button>
+            `;
+
+            subjects.forEach(sub => {
+                const subItems = items.filter(i => i.subjectId === sub.id);
+                const pendingHw = subItems.filter(i => i.type === 'HOMEWORK' && !i.isCompleted).length;
+                const isSelected = selectedSubjectId === sub.id;
+                const style = colorStyles[sub.color] || colorStyles.indigo;
+
+                html += `
+                    <div class="group relative flex items-center shrink-0 lg:w-full">
+                        <button onclick="selectSubject('${sub.id}')" 
+                            class="flex-1 flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition text-left ${isSelected ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100'}">
+                            <span class="flex items-center gap-2 truncate pr-2">
+                                <span class="w-2.5 h-2.5 rounded-full ${style.dot} shrink-0"></span>
+                                <span class="truncate">${escapeHtml(sub.code)}</span>
+                                ${pendingHw > 0 ? `<span class="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-500 text-white">${pendingHw} งาน</span>` : ''}
+                            </span>
+                            <span class="text-xs px-2 py-0.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-600'}">${subItems.length}</span>
+                        </button>
+                        <button onclick="openAddSubjectModal('${sub.id}')" 
+                            class="ml-1 w-7 h-7 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 flex items-center justify-center transition shrink-0" title="แก้ไขวิชา ${escapeHtml(sub.code)}">
+                            <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="confirmDeleteSubject('${sub.id}', '${escapeHtml(sub.code)}')" 
+                            class="ml-0.5 w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition shrink-0" title="ลบวิชา ${escapeHtml(sub.code)}">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                `;
+            });
+
+            listEl.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        window.selectSubject = function(id) {
+            selectedSubjectId = id;
+            renderSidebar();
+            renderMainView();
+        };
+
+        window.setFilter = function(filterType) {
+            currentFilter = filterType;
+            document.querySelectorAll('.filter-pill').forEach(btn => {
+                if (btn.dataset.filter === filterType) {
+                    btn.className = 'filter-pill px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0 bg-indigo-600 text-white shadow-2xs flex items-center gap-1';
+                } else {
+                    btn.className = 'filter-pill px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0 bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1';
+                }
+            });
+            renderMainView();
+        };
+
+        window.renderMainView = function() {
+            const searchQuery = document.getElementById('search-input').value.trim().toLowerCase();
+
+            let filteredItems = items.filter(item => {
+                const matchSubject = selectedSubjectId === 'ALL' || item.subjectId === selectedSubjectId;
+                const imgs = getItemImages(item);
+                
+                let matchFilter = true;
+                if (currentFilter === 'HW_PENDING') matchFilter = (item.type === 'HOMEWORK' && !item.isCompleted);
+                else if (currentFilter === 'HW_DONE') matchFilter = (item.type === 'HOMEWORK' && item.isCompleted);
+                else if (currentFilter === 'NOTE') matchFilter = (item.type !== 'HOMEWORK');
+                else if (currentFilter === 'IMAGE') matchFilter = imgs.length > 0;
+
+                const subObj = subjects.find(s => s.id === item.subjectId);
+                const subName = subObj ? subObj.code.toLowerCase() : '';
+                const matchSearch = !searchQuery || 
+                                    (item.title && item.title.toLowerCase().includes(searchQuery)) ||
+                                    (item.note && item.note.toLowerCase().includes(searchQuery)) ||
+                                    subName.includes(searchQuery);
+
+                return matchSubject && matchFilter && matchSearch;
+            });
+
+            filteredItems.sort((a, b) => {
+                const aPending = a.type === 'HOMEWORK' && !a.isCompleted;
+                const bPending = b.type === 'HOMEWORK' && !b.isCompleted;
+                if (aPending && !bPending) return -1;
+                if (!aPending && bPending) return 1;
+                if (aPending && bPending && a.dueDate && b.dueDate) {
+                    return new Date(a.dueDate) - new Date(b.dueDate);
+                }
+                return (b.createdAt || 0) - (a.createdAt || 0);
+            });
+
+            renderSummarySection();
+            renderItemsGrid(filteredItems);
+            lucide.createIcons();
+        };
+
+        function renderSummarySection() {
+            const summaryEl = document.getElementById('summary-section');
+            const currentSubject = subjects.find(s => s.id === selectedSubjectId);
+            const targetItems = selectedSubjectId === 'ALL' 
+                ? items 
+                : items.filter(i => i.subjectId === selectedSubjectId);
+
+            const imageCount = targetItems.reduce((sum, i) => sum + getItemImages(i).length, 0);
+            const pendingHwCount = targetItems.filter(i => i.type === 'HOMEWORK' && !i.isCompleted).length;
+            const totalCount = targetItems.length;
+
+            const titleText = currentSubject 
+                ? `สรุปข้อมูลวิชา ${escapeHtml(currentSubject.code)}` 
+                : 'ภาพรวมข้อมูลทั้งหมดทุกวิชา';
+            const subDesc = currentSubject && currentSubject.desc 
+                ? `<p class="text-xs text-slate-500 mt-0.5">${escapeHtml(currentSubject.desc)}</p>` 
+                : '';
+
+            const editSubBtn = currentSubject ? `
+                <button onclick="openAddSubjectModal('${currentSubject.id}')" 
+                    class="text-xs text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-xl font-medium transition flex items-center gap-1" title="แก้ไขชื่อ คำอธิบาย หรือสีวิชานี้">
+                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">แก้ไขวิชา</span>
+                </button>
+            ` : '';
+
+            const deleteSubBtn = currentSubject ? `
+                <button onclick="confirmDeleteSubject('${currentSubject.id}', '${escapeHtml(currentSubject.code)}')" 
+                    class="text-xs text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-xl font-medium transition flex items-center gap-1" title="ลบวิชานี้">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">ลบวิชานี้</span>
+                </button>
+            ` : '';
+
+            let checklistHtml = '';
+            if (targetItems.length === 0) {
+                checklistHtml = `
+                    <div class="mt-3 p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs sm:text-sm text-slate-500">
+                        ยังไม่มีบันทึกหรือการบ้านในส่วนนี้ กดปุ่ม <b>"+ เพิ่มโน้ต / การบ้าน"</b> เพื่อเริ่มบันทึกได้เลย
+                    </div>
+                `;
+            } else {
+                const listItems = targetItems.map((item, index) => {
+                    const sub = subjects.find(s => s.id === item.subjectId);
+                    const imgs = getItemImages(item);
+                    const subBadge = selectedSubjectId === 'ALL' && sub 
+                        ? `<span class="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 mr-1.5">${escapeHtml(sub.code)}</span>` 
+                        : '';
+                    
+                    let actionBadge = '';
+                    if (item.type === 'HOMEWORK') {
+                        const hwStatusBadge = item.isCompleted 
+                            ? `<span class="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md inline-flex items-center gap-1 font-medium"><i data-lucide="check" class="w-3 h-3"></i> ส่งแล้ว</span>`
+                            : `<span class="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md inline-flex items-center gap-1 font-medium"><i data-lucide="clock" class="w-3 h-3"></i> การบ้าน</span>`;
+                        const imgBtn = imgs.length > 0 
+                            ? `<button type="button" onclick="event.stopPropagation(); openLightbox('${item.id}', 0)" class="text-[11px] text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-md inline-flex items-center gap-1 font-medium transition"><i data-lucide="image" class="w-3 h-3"></i> รูปภาพ (${imgs.length})</button>`
+                            : '';
+                        actionBadge = `<div class="flex items-center gap-1">${imgBtn}${hwStatusBadge}</div>`;
+                    } else if (imgs.length > 0) {
+                        const countLabel = imgs.length > 1 ? ` (${imgs.length})` : '';
+                        actionBadge = `<button type="button" onclick="event.stopPropagation(); openLightbox('${item.id}', 0)" class="text-[11px] text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md inline-flex items-center gap-1 font-medium transition cursor-pointer"><i data-lucide="image" class="w-3 h-3"></i> รูปภาพ${countLabel}</button>`;
+                    }
+
+                    const titleStyle = (item.type === 'HOMEWORK' && item.isCompleted) ? 'line-through text-slate-400' : 'font-medium text-slate-800 group-hover:text-indigo-700 transition';
+
+                    return `
+                        <li onclick="handleSummaryRowClick('${item.id}')" class="group flex items-center justify-between gap-2 py-2 px-2 -mx-2 rounded-lg hover:bg-indigo-50/50 border-b border-slate-100 last:border-0 text-xs sm:text-sm cursor-pointer transition">
+                            <div class="flex items-center gap-2 min-w-0">
+                                ${item.type === 'HOMEWORK' ? `
+                                    <button type="button" onclick="event.stopPropagation(); toggleHomeworkStatus('${item.id}')" class="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition ${item.isCompleted ? 'bg-emerald-500 text-white' : 'border-2 border-amber-400 bg-white hover:bg-amber-50'}">
+                                        ${item.isCompleted ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}
+                                    </button>
+                                ` : `
+                                    <span class="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 text-[11px] font-bold flex items-center justify-center shrink-0">${index + 1}</span>
+                                `}
+                                <div class="truncate">
+                                    ${subBadge}
+                                    <span class="${titleStyle}">${escapeHtml(item.title)}</span>
+                                </div>
+                            </div>
+                            <div class="shrink-0">${actionBadge}</div>
+                        </li>
+                    `;
+                }).join('');
+
+                checklistHtml = `
+                    <div class="mt-4 bg-slate-50/80 rounded-xl p-3.5 border border-slate-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="list-checks" class="w-3.5 h-3.5 text-indigo-600"></i> รายการหัวข้อที่บันทึกไว้ (${totalCount})
+                            </span>
+                            <button onclick="copySummaryToClipboard()" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-indigo-100 hover:bg-indigo-50 transition shadow-2xs">
+                                <i data-lucide="copy" class="w-3 h-3"></i> คัดลอกสรุป
+                            </button>
+                        </div>
+                        <ul class="max-h-48 overflow-y-auto pr-1">
+                            ${listItems}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            summaryEl.innerHTML = `
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="text-base sm:text-lg font-bold text-slate-800">${titleText}</h2>
+                            ${editSubBtn}
+                            ${deleteSubBtn}
+                        </div>
+                        ${subDesc}
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 shrink-0">
+                        <div class="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200/60 text-xs font-semibold flex items-center gap-1.5">
+                            <i data-lucide="clock" class="w-3.5 h-3.5"></i> ค้างส่ง ${pendingHwCount} งาน
+                        </div>
+                        <div class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200/60 text-xs font-semibold flex items-center gap-1.5">
+                            <i data-lucide="images" class="w-3.5 h-3.5"></i> รูปภาพ ${imageCount}
+                        </div>
+                        <button onclick="openAddItemModal('HOMEWORK')" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> จดการบ้าน
+                        </button>
+                    </div>
+                </div>
+                ${checklistHtml}
+            `;
+        }
+
+        function getDueDateBadge(item) {
+            if (item.type !== 'HOMEWORK') return '';
+            
+            if (item.isCompleted) {
+                return `<span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 inline-flex items-center gap-1.5">
+                    <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> ส่งแล้ว / เสร็จสิ้น
+                </span>`;
+            }
+
+            if (!item.dueDate) {
+                return `<span class="text-xs font-medium px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1.5">
+                    <i data-lucide="clock" class="w-3.5 h-3.5"></i> การบ้าน (ยังไม่ระบุวันส่ง)
+                </span>`;
+            }
+
+            const now = new Date();
+            const due = new Date(`${item.dueDate}T${item.dueTime || '23:59'}`);
+            const diffMs = due - now;
+            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+            const formattedDate = due.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+            const formattedTime = item.dueTime ? ` เวลา ${item.dueTime} น.` : '';
+
+            if (diffMs < 0) {
+                return `<span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-100 text-rose-700 border border-rose-200 inline-flex items-center gap-1.5">
+                    <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> เลยกำหนดส่ง (${formattedDate}${formattedTime})
+                </span>`;
+            } else if (diffDays <= 1 && due.getDate() === now.getDate()) {
+                return `<span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-orange-100 text-orange-800 border border-orange-200 inline-flex items-center gap-1.5">
+                    <i data-lucide="flame" class="w-3.5 h-3.5"></i> ส่งวันนี้! (${formattedTime.trim()})
+                </span>`;
+            } else if (diffDays <= 3) {
+                return `<span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 inline-flex items-center gap-1.5">
+                    <i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i> เหลือ ${diffDays} วัน (${formattedDate})
+                </span>`;
+            } else {
+                return `<span class="text-xs font-medium px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 border border-sky-200 inline-flex items-center gap-1.5">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i> กำหนดส่ง ${formattedDate}${formattedTime}
+                </span>`;
+            }
+        }
+
+        function renderItemsGrid(filteredItems) {
+            const gridEl = document.getElementById('items-grid');
+            const badgeEl = document.getElementById('items-count-badge');
+            badgeEl.textContent = `${filteredItems.length} รายการ`;
+
+            if (filteredItems.length === 0) {
+                gridEl.innerHTML = `
+                    <div class="col-span-full bg-white rounded-2xl border border-slate-200 p-10 text-center flex flex-col items-center justify-center">
+                        <div class="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mb-3">
+                            <i data-lucide="folder-open" class="w-8 h-8"></i>
+                        </div>
+                        <h4 class="text-base font-bold text-slate-800">ไม่พบรายการข้อมูล</h4>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-1 max-w-md">กดปุ่มด้านล่างเพื่อจดการบ้าน อัปโหลดรูปภาพสไลด์ หรือจดเลกเชอร์เก็บไว้ได้เลย</p>
+                        <div class="mt-4 flex gap-2">
+                            <button onclick="openAddItemModal('HOMEWORK')" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs sm:text-sm font-semibold shadow-2xs transition flex items-center gap-1.5">
+                                <i data-lucide="list-todo" class="w-4 h-4"></i> จดการบ้าน
+                            </button>
+                            <button onclick="openAddItemModal('NOTE')" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold shadow-2xs transition flex items-center gap-1.5">
+                                <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มเลกเชอร์/รูป
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            gridEl.innerHTML = filteredItems.map(item => {
+                const sub = subjects.find(s => s.id === item.subjectId) || { code: 'ทั่วไป', color: 'indigo' };
+                const style = colorStyles[sub.color] || colorStyles.indigo;
+                const isHw = item.type === 'HOMEWORK';
+                const isDone = isHw && item.isCompleted;
+                const imgs = getItemImages(item);
+
+                let imageSection = '';
+                if (imgs.length === 1) {
+                    imageSection = `
+                        <div onclick="openLightbox('${item.id}', 0)" class="relative h-48 bg-slate-100 rounded-xl overflow-hidden mb-3 cursor-pointer group border border-slate-200/60 ${isDone ? 'opacity-60' : ''}">
+                            <img src="${imgs[0]}" alt="${escapeHtml(item.title)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
+                                <span class="opacity-0 group-hover:opacity-100 px-3 py-1.5 rounded-full bg-black/75 text-white text-xs font-medium backdrop-blur-sm transition flex items-center gap-1.5">
+                                    <i data-lucide="zoom-in" class="w-3.5 h-3.5"></i> ขยายดูรูปเต็ม
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                } else if (imgs.length > 1) {
+                    const previewThumbs = imgs.slice(0, 4).map((src, idx) => {
+                        const isLastExtra = idx === 3 && imgs.length > 4;
+                        return `
+                            <div onclick="openLightbox('${item.id}', ${idx})" class="relative h-24 bg-slate-100 rounded-lg overflow-hidden cursor-pointer group border border-slate-200/70">
+                                <img src="${src}" alt="${escapeHtml(item.title)} (${idx + 1})" class="w-full h-full object-cover group-hover:scale-105 transition duration-200">
+                                ${isLastExtra ? `
+                                    <div class="absolute inset-0 bg-slate-900/70 text-white text-xs font-bold flex items-center justify-center">
+                                        +${imgs.length - 3} รูป
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('');
+
+                    imageSection = `
+                        <div class="mb-3 ${isDone ? 'opacity-60' : ''}">
+                            <div class="grid grid-cols-2 gap-1.5">
+                                ${previewThumbs}
+                            </div>
+                            <button type="button" onclick="openLightbox('${item.id}', 0)" class="mt-1.5 w-full py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                                <i data-lucide="images" class="w-3.5 h-3.5"></i> ดูรูปภาพทั้งหมด (${imgs.length} รูป)
+                            </button>
+                        </div>
+                    `;
+                }
+
+                const checkboxButton = isHw ? `
+                    <button onclick="toggleHomeworkStatus('${item.id}')" 
+                        class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition mt-0.5 ${isDone ? 'bg-emerald-500 text-white shadow-2xs' : 'border-2 border-amber-400 bg-amber-50/50 hover:bg-amber-100 text-transparent hover:text-amber-500'}" 
+                        title="${isDone ? 'คลิกเพื่อยกเลิกสถานะเสร็จแล้ว' : 'คลิกเพื่อติ๊กถูกว่าทำการบ้านเสร็จแล้ว'}">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                    </button>
+                ` : '';
+
+                return `
+                    <article id="item-card-${item.id}" class="bg-white rounded-2xl border ${isHw && !isDone ? 'border-amber-200/90' : 'border-slate-200'} p-4 shadow-2xs hover:shadow-md transition flex flex-col justify-between animate-fade-in ${isDone ? 'bg-slate-50/70' : ''}">
+                        <div>
+                            <div class="flex items-center justify-between gap-2 mb-2.5">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="text-xs font-bold px-2.5 py-1 rounded-lg ${style.bg} ${style.text} border ${style.border}">
+                                        ${escapeHtml(sub.code)}
+                                    </span>
+                                    ${!isHw ? `<span class="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">เลกเชอร์</span>` : ''}
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="openEditItemModal('${item.id}')" class="w-7 h-7 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 flex items-center justify-center transition" title="แก้ไขรายการนี้">
+                                        <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                    <button onclick="confirmDeleteItem('${item.id}')" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition" title="ลบรายการนี้">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            ${isHw ? `<div class="mb-2.5">${getDueDateBadge(item)}</div>` : ''}
+
+                            ${imageSection}
+
+                            <div class="flex items-start gap-2.5 mb-2">
+                                ${checkboxButton}
+                                <h4 class="text-base font-bold leading-snug flex-1 ${isDone ? 'line-through text-slate-400' : 'text-slate-800'}">
+                                    ${escapeHtml(item.title)}
+                                </h4>
+                            </div>
+
+                            ${item.note ? `<p class="text-sm whitespace-pre-line leading-relaxed p-3 rounded-xl border ${isDone ? 'text-slate-400 bg-slate-100/60 border-slate-100' : 'text-slate-600 bg-slate-50 border-slate-100'}">${escapeHtml(item.note)}</p>` : ''}
+                        </div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        window.toggleHomeworkStatus = async function(itemId) {
+            const target = items.find(i => i.id === itemId);
+            if (!target) return;
+            
+            const updated = { ...target, isCompleted: !target.isCompleted };
+            await persistItem(updated);
+
+            if (updated.isCompleted) {
+                showToast('ติ๊กส่งการบ้านเรียบร้อยแล้ว!', 'success');
+            } else {
+                showToast('เปลี่ยนสถานะกลับเป็นยังไม่ส่งแล้ว', 'info');
+            }
+        };
+
+        window.copySummaryToClipboard = function() {
+            const currentSubject = subjects.find(s => s.id === selectedSubjectId);
+            const targetItems = selectedSubjectId === 'ALL' 
+                ? items 
+                : items.filter(i => i.subjectId === selectedSubjectId);
+
+            if (targetItems.length === 0) return;
+
+            const header = currentSubject 
+                ? `📚 สรุปข้อมูลและการบ้านวิชา ${currentSubject.code}:\n` 
+                : `📚 สรุปข้อมูลและการบ้านทั้งหมด:\n`;
+
+            const lines = targetItems.map((item, idx) => {
+                const sub = subjects.find(s => s.id === item.subjectId);
+                const imgs = getItemImages(item);
+                const prefix = selectedSubjectId === 'ALL' && sub ? `[${sub.code}] ` : '';
+                
+                let statusTag = '';
+                if (item.type === 'HOMEWORK') {
+                    const dueStr = item.dueDate ? ` (ส่ง ${item.dueDate})` : '';
+                    statusTag = item.isCompleted ? ` [✅ เสร็จแล้ว]` : ` [⏳ การบ้าน${dueStr}]`;
+                } else if (imgs.length > 0) {
+                    statusTag = imgs.length > 1 ? ` [🖼️ ${imgs.length} รูปภาพ]` : ` [🖼️ รูปภาพ]`;
+                }
+
+                const noteTag = item.note ? ` - ${item.note}` : '';
+                return `${idx + 1}. ${prefix}${item.title}${statusTag}${noteTag}`;
+            }).join('\n');
+
+            const textArea = document.createElement("textarea");
+            textArea.value = header + lines;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            showToast('คัดลอกรายการสรุปเรียบร้อยแล้ว!', 'success');
+        };
+
+        // เมื่อกดคลิกแถวใน "รายการหัวข้อที่บันทึกไว้"
+        window.handleSummaryRowClick = function(itemId) {
+            const item = items.find(i => i.id === itemId);
+            if (!item) return;
+
+            const cardEl = document.getElementById(`item-card-${itemId}`);
+            if (cardEl) {
+                cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                cardEl.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                setTimeout(() => {
+                    cardEl.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                }, 1600);
+            } else {
+                // หากการ์ดถูกซ่อนด้วยตัวกรอง/การค้นหาอยู่ ให้เปิดดูรายละเอียด/รูปภาพใน Lightbox ได้ทันที
+                openLightbox(itemId, 0);
+            }
+        };
+
+        // =========================================================================
+        // 6. Modals เพิ่ม / แก้ไข รายการและรายวิชา
+        // =========================================================================
+        window.selectItemType = function(type) {
+            currentItemType = type;
+            const btnNote = document.getElementById('type-btn-note');
+            const btnHw = document.getElementById('type-btn-hw');
+            const dueContainer = document.getElementById('due-date-container');
+            const titleLabel = document.getElementById('item-title-label');
+            const titleInput = document.getElementById('item-title');
+
+            if (type === 'HOMEWORK') {
+                btnHw.className = 'py-2.5 px-3 rounded-xl border-2 border-amber-500 bg-amber-50 text-amber-800 font-bold text-sm flex items-center justify-center gap-2 transition';
+                btnNote.className = 'py-2.5 px-3 rounded-xl border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-semibold text-sm flex items-center justify-center gap-2 transition';
+                dueContainer.classList.remove('hidden');
+                titleLabel.innerHTML = 'หัวข้อการบ้าน / งานที่ต้องส่ง <span class="text-rose-500">*</span>';
+                titleInput.placeholder = 'เช่น ทำแบบฝึกหัดท้ายบทที่ 3, รายงานกลุ่ม...';
+            } else {
+                btnNote.className = 'py-2.5 px-3 rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-700 font-bold text-sm flex items-center justify-center gap-2 transition';
+                btnHw.className = 'py-2.5 px-3 rounded-xl border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-semibold text-sm flex items-center justify-center gap-2 transition';
+                dueContainer.classList.add('hidden');
+                titleLabel.innerHTML = 'หัวข้อเลกเชอร์ / เรื่องที่เรียน <span class="text-rose-500">*</span>';
+                titleInput.placeholder = 'เช่น บทที่ 1 แนวคิดการเงิน, สไลด์อาจารย์...';
+            }
+        };
+
+        window.openAddItemModal = function(defaultType = 'NOTE') {
+            document.getElementById('edit-item-id').value = '';
+            document.getElementById('item-modal-heading').textContent = 'บันทึกเลกเชอร์ / จดการบ้าน';
+            
+            const selectEl = document.getElementById('item-subject-select');
+            if (subjects.length === 0) {
+                selectEl.innerHTML = `<option value="">-- กรุณาสร้างวิชาก่อน --</option>`;
+            } else {
+                selectEl.innerHTML = subjects.map(s => 
+                    `<option value="${s.id}" ${s.id === selectedSubjectId ? 'selected' : ''}>${escapeHtml(s.code)} ${s.desc ? `- ${escapeHtml(s.desc)}` : ''}</option>`
+                ).join('');
+            }
+
+            selectItemType(defaultType);
+            document.getElementById('item-title').value = '';
+            document.getElementById('item-due-date').value = '';
+            document.getElementById('item-due-time').value = '23:59';
+            document.getElementById('item-note').value = '';
+            clearSelectedImage();
+
+            const modal = document.getElementById('add-item-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        };
+
+        window.openEditItemModal = function(itemId) {
+            const item = items.find(i => i.id === itemId);
+            if (!item) return;
+
+            document.getElementById('edit-item-id').value = item.id;
+            document.getElementById('item-modal-heading').textContent = 'แก้ไขรายการ';
+
+            const selectEl = document.getElementById('item-subject-select');
+            selectEl.innerHTML = subjects.map(s => 
+                `<option value="${s.id}" ${s.id === item.subjectId ? 'selected' : ''}>${escapeHtml(s.code)} ${s.desc ? `- ${escapeHtml(s.desc)}` : ''}</option>`
+            ).join('');
+
+            selectItemType(item.type || 'NOTE');
+            document.getElementById('item-title').value = item.title || '';
+            document.getElementById('item-due-date').value = item.dueDate || '';
+            document.getElementById('item-due-time').value = item.dueTime || '23:59';
+            document.getElementById('item-note').value = item.note || '';
+
+            const imgs = getItemImages(item);
+            if (imgs.length > 0) {
+                currentImages = [...imgs];
+                renderImageThumbnailsPreview();
+            } else {
+                clearSelectedImage();
+            }
+
+            const modal = document.getElementById('add-item-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        };
+
+        window.closeAddItemModal = function() {
+            const modal = document.getElementById('add-item-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.handleSaveItem = async function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-item-id').value;
+            const subjectId = document.getElementById('item-subject-select').value;
+            const title = document.getElementById('item-title').value.trim();
+            const dueDate = document.getElementById('item-due-date').value;
+            const dueTime = document.getElementById('item-due-time').value;
+            const note = document.getElementById('item-note').value.trim();
+
+            if (!subjectId) {
+                showToast('กรุณาสร้างหรือเลือกรายวิชาก่อน', 'error');
+                return;
+            }
+            if (!title) {
+                showToast('กรุณาระบุหัวข้อ', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('save-item-btn');
+            btn.disabled = true;
+
+            const imagesToSave = currentImages.length > 0 ? [...currentImages] : [];
+            const firstImg = imagesToSave[0] || null;
+
+            try {
+                if (editId) {
+                    const existing = items.find(i => i.id === editId) || {};
+                    await persistItem({
+                        ...existing,
+                        id: editId,
+                        type: currentItemType,
+                        subjectId,
+                        title,
+                        dueDate: currentItemType === 'HOMEWORK' ? dueDate : '',
+                        dueTime: currentItemType === 'HOMEWORK' ? dueTime : '',
+                        note,
+                        images: imagesToSave,
+                        imageUrl: firstImg,
+                    });
+                    showToast('แก้ไขข้อมูลเรียบร้อยแล้ว!', 'success');
+                } else {
+                    await persistItem({
+                        id: 'item_' + Date.now(),
+                        type: currentItemType,
+                        subjectId,
+                        title,
+                        dueDate: currentItemType === 'HOMEWORK' ? dueDate : '',
+                        dueTime: currentItemType === 'HOMEWORK' ? dueTime : '',
+                        isCompleted: false,
+                        note,
+                        images: imagesToSave,
+                        imageUrl: firstImg,
+                        createdAt: Date.now()
+                    });
+                    showToast(currentItemType === 'HOMEWORK' ? 'จดการบ้านเรียบร้อยแล้ว!' : 'บันทึกลงคลังเรียบร้อยแล้ว!', 'success');
+                }
+                closeAddItemModal();
+            } catch (err) {
+                showToast('บันทึกไม่สำเร็จ (รูปภาพรวมกันอาจใหญ่เกินไป ลองลดจำนวนรูปต่อ 1 รายการ)', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        };
+
+        // รายวิชา
+        window.openAddSubjectModal = function(editSubjectId = null) {
+            const modal = document.getElementById('add-subject-modal');
+            const submitBtn = modal.querySelector('button[type="submit"]');
+            if (editSubjectId) {
+                const sub = subjects.find(s => s.id === editSubjectId);
+                if (!sub) return;
+                document.getElementById('edit-subject-id').value = sub.id;
+                document.getElementById('subject-modal-title').textContent = 'แก้ไขรายวิชา';
+                if (submitBtn) submitBtn.textContent = 'บันทึกการแก้ไข';
+                document.getElementById('subject-code').value = sub.code;
+                document.getElementById('subject-desc').value = sub.desc || '';
+                selectSubjectColor(sub.color || 'indigo');
+            } else {
+                document.getElementById('edit-subject-id').value = '';
+                document.getElementById('subject-modal-title').textContent = 'เพิ่มรายวิชาใหม่';
+                if (submitBtn) submitBtn.textContent = 'บันทึกรายวิชา';
+                document.getElementById('subject-code').value = '';
+                document.getElementById('subject-desc').value = '';
+                selectSubjectColor('indigo');
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+            setTimeout(() => document.getElementById('subject-code').focus(), 100);
+        };
+
+        window.closeAddSubjectModal = function() {
+            const modal = document.getElementById('add-subject-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.openQuickNewSubjectInModal = function() {
+            closeAddItemModal();
+            openAddSubjectModal();
+        };
+
+        window.selectSubjectColor = function(color) {
+            selectedColor = color;
+            document.querySelectorAll('.color-opt').forEach(btn => {
+                if (btn.dataset.color === color) {
+                    btn.classList.add('ring-2', 'ring-offset-2', 'ring-slate-800', 'scale-110');
+                } else {
+                    btn.classList.remove('ring-2', 'ring-offset-2', 'ring-slate-800', 'scale-110');
+                }
+            });
+        };
+
+        window.handleSaveSubject = async function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-subject-id').value;
+            const code = document.getElementById('subject-code').value.trim();
+            const desc = document.getElementById('subject-desc').value.trim();
+            if (!code) return;
+
+            if (editId) {
+                const existing = subjects.find(s => s.id === editId) || {};
+                await persistSubject({ ...existing, id: editId, code, desc, color: selectedColor });
+                showToast(`แก้ไขวิชา ${code} เรียบร้อยแล้ว`, 'success');
+            } else {
+                const newSub = {
+                    id: 'sub_' + Date.now(),
+                    code,
+                    desc,
+                    color: selectedColor,
+                    createdAt: Date.now()
+                };
+                selectedSubjectId = newSub.id;
+                await persistSubject(newSub);
+                showToast(`สร้างวิชา ${code} เรียบร้อยแล้ว`, 'success');
+            }
+
+            closeAddSubjectModal();
+            if (!document.getElementById('manage-subjects-modal').classList.contains('hidden')) {
+                renderManageSubjectsList();
+            }
+        };
+
+        window.openManageSubjectsModal = function() {
+            renderManageSubjectsList();
+            const modal = document.getElementById('manage-subjects-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        };
+
+        window.closeManageSubjectsModal = function() {
+            const modal = document.getElementById('manage-subjects-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        function renderManageSubjectsList() {
+            const container = document.getElementById('manage-subjects-list');
+            if (subjects.length === 0) {
+                container.innerHTML = `<p class="text-center text-sm text-slate-400 py-6">ยังไม่มีรายวิชาในระบบ</p>`;
+                return;
+            }
+
+            container.innerHTML = subjects.map(sub => {
+                const style = colorStyles[sub.color] || colorStyles.indigo;
+                const count = items.filter(i => i.subjectId === sub.id).length;
+                return `
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <span class="w-3 h-3 rounded-full ${style.dot} shrink-0"></span>
+                            <div class="truncate">
+                                <p class="text-sm font-bold text-slate-800 truncate">${escapeHtml(sub.code)}</p>
+                                <p class="text-[11px] text-slate-500 truncate">${sub.desc ? escapeHtml(sub.desc) + ' • ' : ''}${count} รายการ</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="openAddSubjectModal('${sub.id}')" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 flex items-center justify-center transition" title="แก้ไขวิชา">
+                                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button onclick="confirmDeleteSubject('${sub.id}', '${escapeHtml(sub.code)}')" class="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white flex items-center justify-center transition" title="ลบวิชานี้">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        window.confirmDeleteSubject = function(subjectId, code) {
+            const count = items.filter(i => i.subjectId === subjectId).length;
+            const msg = count > 0 
+                ? `วิชานี้มีข้อมูลและรูปภาพอยู่ ${count} รายการ หากลบวิชา ข้อมูลทั้งหมดในวิชานี้จะถูกลบออกด้วย` 
+                : `คุณต้องการลบวิชา ${code} ออกจากคลังใช่หรือไม่?`;
+
+            openConfirmModal(`ลบวิชา ${code}?`, msg, async () => {
+                await removeSubjectFromStore(subjectId);
+                if (selectedSubjectId === subjectId) selectedSubjectId = 'ALL';
+                renderManageSubjectsList();
+                showToast(`ลบวิชา ${code} เรียบร้อยแล้ว`, 'success');
+            });
+        };
+
+        window.confirmDeleteItem = function(itemId) {
+            openConfirmModal('ลบรายการนี้?', 'รูปภาพและบันทึกในรายการนี้จะถูกลบออกอย่างถาวร', async () => {
+                await removeItemFromStore(itemId);
+                showToast('ลบรายการเรียบร้อยแล้ว', 'success');
+            });
+        };
+
+        // =========================================================================
+        // 7. จัดการรูปภาพหลายรูป (บีบอัดให้เบา + เลือกหลายรูป + Ctrl+V วางซ้ำได้)
+        // =========================================================================
+        function compressImage(file, maxWidth = 850, quality = 0.65) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = err => reject(err);
+                };
+                reader.onerror = err => reject(err);
+            });
+        }
+
+        function renderImageThumbnailsPreview() {
+            const countLabel = document.getElementById('image-count-label');
+            const placeholder = document.getElementById('upload-placeholder');
+            const container = document.getElementById('image-preview-container');
+            const grid = document.getElementById('image-thumbnails-grid');
+
+            if (!currentImages || currentImages.length === 0) {
+                countLabel.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                container.classList.add('hidden');
+                grid.innerHTML = '';
+                return;
+            }
+
+            countLabel.textContent = `แนบแล้ว ${currentImages.length} รูป`;
+            countLabel.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            container.classList.remove('hidden');
+
+            grid.innerHTML = currentImages.map((src, idx) => `
+                <div class="relative aspect-square rounded-xl overflow-hidden bg-white border border-slate-200 shadow-2xs group">
+                    <img src="${src}" alt="รูปที่ ${idx + 1}" class="w-full h-full object-cover">
+                    <span class="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/65 text-white text-[10px] font-mono">${idx + 1}</span>
+                    <button type="button" onclick="removeImageAtIndex(${idx}, event)" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-xs transition" title="ลบรูปนี้">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        window.removeImageAtIndex = function(index, e) {
+            if (e) e.stopPropagation();
+            currentImages.splice(index, 1);
+            renderImageThumbnailsPreview();
+        };
+
+        window.handleImageFileSelect = async function(event) {
+            const files = Array.from(event.target.files || []);
+            if (files.length === 0) return;
+            await processImageFiles(files);
+            event.target.value = '';
+        };
+
+        window.handleImageDrop = async function(event) {
+            event.preventDefault();
+            const dropZone = document.getElementById('drop-zone');
+            if (dropZone) dropZone.classList.remove('border-indigo-500', 'bg-indigo-50/40');
+            const files = Array.from(event.dataTransfer?.files || []);
+            if (files.length > 0) {
+                await processImageFiles(files);
+            }
+        };
+
+        async function processImageFiles(files) {
+            const validFiles = files.filter(f => f && f.type && f.type.startsWith('image/'));
+            if (validFiles.length === 0) {
+                showToast('กรุณาเลือกไฟล์รูปภาพเท่านั้น', 'error');
+                return;
+            }
+
+            let addedCount = 0;
+            for (const file of validFiles) {
+                try {
+                    const compressedDataUrl = await compressImage(file);
+                    currentImages.push(compressedDataUrl);
+                    addedCount++;
+                } catch (err) {
+                    console.warn("Image compression error:", err);
+                }
+            }
+
+            if (addedCount > 0) {
+                renderImageThumbnailsPreview();
+                showToast(`แนบรูปภาพเพิ่ม ${addedCount} รูปแล้ว (รวม ${currentImages.length} รูป)`, 'success');
+            } else {
+                showToast('เกิดข้อผิดพลาดในการโหลดรูปภาพ', 'error');
+            }
+        }
+
+        window.addEventListener('paste', async (e) => {
+            const itemsClipboard = (e.clipboardData || e.originalEvent.clipboardData)?.items || [];
+            const pastedFiles = [];
+            for (const item of itemsClipboard) {
+                if (item.type && item.type.indexOf('image') === 0) {
+                    const blob = item.getAsFile();
+                    if (blob) pastedFiles.push(blob);
+                }
+            }
+            if (pastedFiles.length > 0) {
+                const modal = document.getElementById('add-item-modal');
+                if (modal.classList.contains('hidden')) {
+                    openAddItemModal('NOTE');
+                }
+                await processImageFiles(pastedFiles);
+            }
+        });
+
+        window.clearSelectedImage = function(e) {
+            if (e) e.stopPropagation();
+            currentImages = [];
+            const inputEl = document.getElementById('item-image-input');
+            if (inputEl) inputEl.value = '';
+            renderImageThumbnailsPreview();
+        };
+
+        // =========================================================================
+        // 8. สำรองข้อมูล (.json) & Lightbox (รองรับหลายรูป) & Confirm Modal
+        // =========================================================================
+        window.openBackupModal = function() {
+            const modal = document.getElementById('backup-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        };
+
+        window.closeBackupModal = function() {
+            const modal = document.getElementById('backup-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.exportBackupData = function() {
+            const data = {
+                version: 3,
+                vaultId,
+                exportedAt: new Date().toISOString(),
+                subjects,
+                items
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const dateTag = new Date().toISOString().slice(0, 10);
+            a.href = url;
+            a.download = `StudyVault_${vaultId}_${dateTag}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('ดาวน์โหลดไฟล์สำรองข้อมูลเรียบร้อยแล้ว', 'success');
+        };
+
+        window.importBackupData = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (Array.isArray(parsed.subjects) && Array.isArray(parsed.items)) {
+                        for (const sub of parsed.subjects) {
+                            await persistSubject(sub);
+                        }
+                        for (const item of parsed.items) {
+                            await persistItem(item);
+                        }
+                        selectedSubjectId = 'ALL';
+                        renderSidebar();
+                        renderMainView();
+                        closeBackupModal();
+                        showToast('นำเข้าข้อมูลสำรองและซิงก์เรียบร้อยแล้ว!', 'success');
+                    } else {
+                        showToast('รูปแบบไฟล์สำรองไม่ถูกต้อง', 'error');
+                    }
+                } catch (err) {
+                    showToast('ไม่สามารถอ่านไฟล์สำรองได้', 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        };
+
+        window.openLightbox = function(itemId, startIndex = 0) {
+            const item = items.find(i => i.id === itemId);
+            if (!item) return;
+            const sub = subjects.find(s => s.id === item.subjectId);
+            const imgs = getItemImages(item);
+
+            document.getElementById('lightbox-subject').textContent = sub ? sub.code : 'ทั่วไป';
+            document.getElementById('lightbox-title').textContent = item.title;
+
+            const noteEl = document.getElementById('lightbox-note');
+            if (item.note) {
+                noteEl.textContent = item.note;
+                noteEl.classList.remove('hidden');
+            } else {
+                noteEl.classList.add('hidden');
+            }
+
+            lightboxImages = imgs;
+            lightboxIndex = Math.max(0, Math.min(startIndex, imgs.length - 1));
+            renderLightboxSlide();
+
+            const modal = document.getElementById('lightbox-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        };
+
+        function renderLightboxSlide() {
+            const imgEl = document.getElementById('lightbox-img');
+            const noImgEl = document.getElementById('lightbox-no-img');
+            const prevBtn = document.getElementById('lightbox-prev-btn');
+            const nextBtn = document.getElementById('lightbox-next-btn');
+            const counterEl = document.getElementById('lightbox-counter');
+            const thumbsEl = document.getElementById('lightbox-thumbs');
+
+            if (!lightboxImages || lightboxImages.length === 0) {
+                imgEl.classList.add('hidden');
+                noImgEl.classList.remove('hidden');
+                prevBtn.classList.add('hidden');
+                prevBtn.classList.remove('flex');
+                nextBtn.classList.add('hidden');
+                nextBtn.classList.remove('flex');
+                counterEl.classList.add('hidden');
+                thumbsEl.classList.add('hidden');
+                thumbsEl.classList.remove('flex');
+                return;
+            }
+
+            noImgEl.classList.add('hidden');
+            imgEl.classList.remove('hidden');
+            imgEl.src = lightboxImages[lightboxIndex];
+
+            if (lightboxImages.length > 1) {
+                counterEl.textContent = `รูปที่ ${lightboxIndex + 1} / ${lightboxImages.length}`;
+                counterEl.classList.remove('hidden');
+
+                prevBtn.classList.remove('hidden');
+                prevBtn.classList.add('flex');
+                nextBtn.classList.remove('hidden');
+                nextBtn.classList.add('flex');
+
+                thumbsEl.classList.remove('hidden');
+                thumbsEl.classList.add('flex');
+                thumbsEl.innerHTML = lightboxImages.map((src, idx) => `
+                    <button type="button" onclick="jumpLightbox(${idx})" class="w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition ${idx === lightboxIndex ? 'border-indigo-400 scale-105' : 'border-white/20 opacity-60 hover:opacity-100'}">
+                        <img src="${src}" alt="Thumb ${idx + 1}" class="w-full h-full object-cover">
+                    </button>
+                `).join('');
+            } else {
+                counterEl.classList.add('hidden');
+                prevBtn.classList.add('hidden');
+                prevBtn.classList.remove('flex');
+                nextBtn.classList.add('hidden');
+                nextBtn.classList.remove('flex');
+                thumbsEl.classList.add('hidden');
+                thumbsEl.classList.remove('flex');
+            }
+        }
+
+        window.stepLightbox = function(delta) {
+            if (!lightboxImages || lightboxImages.length <= 1) return;
+            lightboxIndex = (lightboxIndex + delta + lightboxImages.length) % lightboxImages.length;
+            renderLightboxSlide();
+        };
+
+        window.jumpLightbox = function(idx) {
+            if (idx >= 0 && idx < lightboxImages.length) {
+                lightboxIndex = idx;
+                renderLightboxSlide();
+            }
+        };
+
+        window.closeLightbox = function() {
+            const modal = document.getElementById('lightbox-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        function openConfirmModal(title, message, onConfirm) {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            pendingConfirmCallback = onConfirm;
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        window.closeConfirmModal = function() {
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            pendingConfirmCallback = null;
+        };
+
+        document.getElementById('confirm-yes-btn').addEventListener('click', () => {
+            if (pendingConfirmCallback) pendingConfirmCallback();
+            closeConfirmModal();
+        });
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'error' ? 'bg-rose-600' : 'bg-slate-900';
+            const iconName = type === 'error' ? 'alert-circle' : 'check-circle-2';
+            const iconColor = type === 'error' ? 'text-white' : 'text-emerald-400';
+
+            toast.className = `${bgClass} text-white px-4 py-3 rounded-xl shadow-lg text-xs sm:text-sm font-medium flex items-center gap-2.5 animate-fade-in`;
+            toast.innerHTML = `<i data-lucide="${iconName}" class="w-4 h-4 ${iconColor} shrink-0"></i><span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // เริ่มต้นทำงาน
+        window.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
+            initVaultId();
+            await initCloudSync();
+        });
+    </script>
+</body>
+</html>
